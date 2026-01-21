@@ -1,0 +1,35 @@
+ClearAll["Global`*"]
+
+tauSq = 1/5;
+
+num[eps_, sigmaSq_] := -63 eps^2 sigmaSq + 80 eps^2 tauSq + 
+   144 eps sigmaSq - 180 eps tauSq - 9 eps - 81 sigmaSq + 108 tauSq;
+
+den[eps_] := (17 eps^2 - 45 eps + 27);
+
+sigmaNSq[eps_, sigmaSq_] := num[eps, sigmaSq]/den[eps];
+
+constraints = 
+  0 <= sigmaSq <= 1/10 && 0 <= eps <= 51/100 && den[eps] != 0;
+
+Print["--- STARTING CHECK ---"];
+
+(* Check 1: Global positivity *)
+checkPositive = 
+  Reduce[constraints && sigmaNSq[eps, sigmaSq] <= 0, {eps, sigmaSq}, 
+   Reals];
+
+Print["Is variance strictly positive? ", checkPositive === False];
+
+(* Check 2: Minimum value *)
+minVal = 
+  Minimize[{sigmaNSq[eps, sigmaSq], constraints}, {eps, sigmaSq}, 
+   Reals];
+maxVal = 
+  Maximize[{sigmaNSq[eps, sigmaSq], constraints}, {eps, sigmaSq}, 
+   Reals];
+
+Print["Minimum variance value: ", N[minVal]];
+Print["Maximum variance value: ", N[maxVal]];
+
+Print["--- CHECK COMPLETE ---"];
