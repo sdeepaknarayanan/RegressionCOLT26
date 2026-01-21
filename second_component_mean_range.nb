@@ -1,0 +1,53 @@
+(* 1. SETUP *)
+Unprotect @@ Names["Global`*"];
+ClearAll["Global`*"];
+
+(* Define Functions *)
+num[eps_, sigmaSq_] := 
+  60 eps^2 sigmaSq - 12 eps^2 - 45 eps sigmaSq + 45 eps;
+den[eps_] := 5 (17 eps^2 - 45 eps + 27);
+varExpr[eps_, sigmaSq_] := (num[eps, sigmaSq]/den[eps]);
+muVal[eps_, sigmaSq_] := Sqrt[varExpr[eps, sigmaSq]];
+
+(* Define Constraints *)
+consEps = 0 <= eps <= 51/100;
+consSig = 0 <= sigmaSq <= 1/10;
+(* Ensure term inside Sqrt is non-negative *)
+consReal = varExpr[eps, sigmaSq] >= 0;
+allCons = consEps && consSig && consReal;
+
+Print["--- STEP 1: PROFILING (Inner Optimization w.r.t eps) ---"];
+
+(* m(sigma^2): The lowest possible value for a specific sigma^2 *)
+minProfileExpr = Minimize[{muVal[eps, sigmaSq], allCons}, {eps}][[1]];
+
+(* M(sigma^2): The highest possible value for a specific sigma^2 *)
+maxProfileExpr = Maximize[{muVal[eps, sigmaSq], allCons}, {eps}][[1]];
+
+Print["Profiles calculated (stored as Piecewise functions)."];
+
+Print["\n--- STEP 2: INTERSECTION (Outer Optimization w.r.t sigmaSq) ---"];
+Print["Calculating intersection [a, b] where:"];
+Print["a = Max[ MinProfile ] (Largest Minimum)"];
+Print["b = Min[ MaxProfile ] (Smallest Maximum)"];
+
+(* Calculate 'a': The Largest Minimum *)
+lowerBoundA = Maximize[{minProfileExpr, consSig}, sigmaSq];
+valA = lowerBoundA[[1]];
+
+(* Calculate 'b': The Smallest Maximum *)
+upperBoundB = Minimize[{maxProfileExpr, consSig}, sigmaSq];
+valB = upperBoundB[[1]];
+
+Print["\n---------------- RESULTS ----------------"];
+Print["Lower Bound a (Largest Min): ", N[valA]];
+Print["Upper Bound b (Smallest Max): ", N[valB]];
+
+(* Validation Logic *)
+isValidIntersection = valA <= valB;
+
+If[isValidIntersection, 
+  Print["\nCONCLUSION: Valid Intersection Exists."], 
+  Print["\nCONCLUSION: Intersection is EMPTY (a > b). No single value works for all sigma."]];
+
+Print["The range valid for ALL sigma^2 is: [", N[valA], ", ", N[valB], "]"];
