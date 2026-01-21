@@ -1,0 +1,65 @@
+(* 1. FORCE CLEAN SLATE *)
+(* Unprotect and clear all global symbols to prevent conflicts *)
+Unprotect @@ Names["Global`*"];
+ClearAll["Global`*"];
+
+(* 2. DEFINE SYSTEM *)
+(* Define Weights and Relation *)
+ws = 1 - eps;
+w1 = eps/9;
+w2 = (8 eps)/9;
+meanRel = mu1 -> -2 mu2;
+
+(* Define Moment Equations *)
+(* We substitute the mean relation immediately to simplify the system *)
+eq1 = (ws*mus + w1*mu1 + w2*mu2 == 0) /. meanRel;
+
+eq2 = (ws*(mus^2 + sig2) + w1*(mu1^2 + sig1sq) + w2*(mu2^2 + tau2) == 
+     1) /. meanRel;
+
+eq3 = (ws*(mus^3 + 3 mus*sig2) + w1*(mu1^3 + 3 mu1*sig1sq) + 
+      w2*(mu2^3 + 3 mu2*tau2) == 0) /. meanRel;
+
+(* 3. SOLVE SEQUENTIALLY (Robust Method) *)
+
+(* Step A: Solve Eq1 for mus *)
+(* Flatten ensures we get a simple rule {mus->...} instead of {{mus->...}} *)
+ruleMus = Flatten[Solve[eq1, mus]];
+
+(* Step B: Substitute mus into Eq3 and solve for sig1sq *)
+eq3Sub = eq3 /. ruleMus;
+ruleSig1 = Flatten[Solve[eq3Sub, sig1sq]];
+
+(* Step C: Substitute mus and sig1sq into Eq2 and solve for mu2^2 *)
+(* We replace mu2^2 with a temporary symbol 'mu2sq' to solve purely algebraically *)
+eq2Sub = eq2 /. ruleMus /. ruleSig1;
+ruleMu2sq = Flatten[Solve[eq2Sub /. mu2^2 -> mu2sq, mu2sq]];
+
+(* 4. CONSTRUCT SOLUTION *)
+(* Extract the expression for mu2^2 *)
+mu2sqExpr = mu2sq /. ruleMu2sq;
+
+(* Define mu2 as the positive square root *)
+mu2Expr = Simplify[Sqrt[mu2sqExpr]];
+
+(* Construct the final expression for -mu_s *)
+(* We take the expression for mus, sub in mu2Expr, and negate it *)
+finalMuS = Simplify[-(mus /. ruleMus) /. mu2 -> mu2Expr];
+
+(* 5. VERIFY MONOTONICITY (Boolean Check) *)
+
+(* Calculate Derivative wrt eps *)
+dMu = D[finalMuS, eps] // Simplify;
+
+(* Define Conditions: 0 < eps < 0.5 AND 0 < sig2 <= 0.1 *)
+(* We fix tau2 to 0.2 for the numerical check *)
+tau2Value = 1/5;
+domain = (0 < eps <= 1/2) && (0 < sig2 <= 1/10);
+
+(* Check if Derivative is > 0 for all points in the domain *)
+isStrictlyIncreasing = 
+  Resolve[ForAll[{eps, sig2}, domain, (dMu /. tau2 -> tau2Value) > 0],
+    Reals];
+
+(* Output the Result *)
+isStrictlyIncreasing
