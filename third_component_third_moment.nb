@@ -1,0 +1,70 @@
+(* ========================================== *)
+(* Symbolic Minimization of v2 and v3 *)
+(* ========================================== *)
+
+(* 1. Setup Constants and Variables *)
+k = 4/5;
+Clear[\[CurlyEpsilon], s]; (* s represents signal variance. *)
+
+w1 = 1 - \[CurlyEpsilon];
+w2 = (1 - \[CurlyEpsilon])/k^3;
+w3 = 1 - w1 - w2;
+
+epMin = 1 - k^3/(1 + k^3);
+
+mu1 = 1/(3 Sqrt[1 - \[CurlyEpsilon]]);
+mu2 = -k mu1;
+
+mu3 = -(w1 mu1 + w2 mu2)/w3;
+
+sumMeansSq = w1 mu1^2 + w2 mu2^2 + w3 mu3^2;
+rhsVar = 1 - sumMeansSq - w1 s;
+
+rhsSkew = -w3 mu3^3 - 3 w1 mu1 s;
+
+(* 6. Solve Linear System for v2 and v3 *)
+(* System: w2*v2 + w3*v3 = rhsVar, (w2*mu2)*v2 + (w3*mu3)*v3 = rhsSkew/3 *)
+
+cA = w2;
+cB = w3;
+cC = w2 mu2;
+cD = w3 mu3;
+
+det = cA cD - cB cC; (* Denominator for Cramer's Rule *)
+
+(* Using Cramer's Rule to solve for v2 and v3 *)
+v2Expr = Simplify[(cD*rhsVar - cB*(rhsSkew/3))/det];
+v3Expr = Simplify[(cA*(rhsSkew/3) - cC*rhsVar)/det];
+
+(* 7. Define Optimization Domain *)
+(* \[CurlyEpsilon] ∈ [epMin,1] and s ∈ [0,0.1] *)
+domain = {7/10 <= \[CurlyEpsilon] <= 1, 0 <= s <= 1/10};
+
+Print["Domain: \[CurlyEpsilon] \[Element] [", NumberForm[epMin, {4, 3}],
+   ", 1], s \[Element] [0, 0.1]"];
+
+(* 8. Perform Minimization and Maximization *)
+Print["\n--- Results for v2 ---"];
+minV2 = MinValue[{v2Expr, Sequence @@ domain}, {\[CurlyEpsilon], s}];
+maxV2 = MaxValue[{v2Expr, Sequence @@ domain}, {\[CurlyEpsilon], s}];
+Print["Min v2: ", NumberForm[N[minV2], {6, 5}]];
+Print["Max v2: ", NumberForm[N[maxV2], {6, 5}]];
+
+Print["\n--- Results for v3 ---"];
+minV3 = MinValue[{v3Expr, Sequence @@ domain}, {\[CurlyEpsilon], s}];
+maxV3 = MaxValue[{v3Expr, Sequence @@ domain}, {\[CurlyEpsilon], s}];
+Print["Min v3: ", NumberForm[N[minV3], {6, 5}]];
+Print["Max v3: ", NumberForm[N[maxV3], {6, 5}]];
+
+(* 9. (Optional) Check Positivity Constraints *)
+Print["\n--- Positivity Conditions (v2 >= 0 and v3 >= 0) ---"];
+
+redV2 = Reduce[{v2Expr > 0, Sequence @@ domain}, {\[CurlyEpsilon], s},
+    Reals];
+redV3 = Reduce[{v3Expr > 0, Sequence @@ domain}, {\[CurlyEpsilon], s},
+    Reals];
+
+Print["Region where v2 > 0:"];
+Print[redV2];
+Print["\nRegion where v3 > 0:"];
+Print[redV3];
