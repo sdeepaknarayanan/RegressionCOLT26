@@ -1,2 +1,2 @@
 
-Supporting Code for COLT 2026 submission.
+Supporting Code for COLT 2026 paper.
